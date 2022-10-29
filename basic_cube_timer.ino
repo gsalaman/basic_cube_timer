@@ -74,14 +74,19 @@ void display_elapsed_time( void )
 {
   uint32_t current_time;
   uint32_t elapsed_time;
+  uint32_t elapsed_sec;
+  uint32_t elapsed_ms;
 
   current_time = millis();
 
   elapsed_time = current_time - start_time;
+  elapsed_sec = elapsed_time/1000;
+  elapsed_ms = elapsed_time - elapsed_sec;
 
   /* Serial print for now...eventually going to LCD. */
-  Serial.println(elapsed_time);
-  
+  Serial.print(elapsed_sec);
+  Serial.print(".");
+  Serial.println(elapsed_ms);
 }  /* end of display_elapsed_time */
 
 /*=================================================================
@@ -89,7 +94,7 @@ void display_elapsed_time( void )
  =================================================================*/
 void init_reset_state( void )
 {
-  display_text("Waiting");
+  display_text("Waiting...press both buttons to arm");
   
 }  /* end of init_reset_state */
 
@@ -98,7 +103,7 @@ void init_reset_state( void )
  =================================================================*/
 void init_armed_state( void )
 {
-  display_text("Ready");
+  display_text("Ready...release to begin");
   
 }  /* end of init_armed_state */
 
@@ -120,7 +125,9 @@ void init_stopped_state( void )
 {
 
   // One last update...
+  Serial.println("Done!!!");
   display_elapsed_time();
+  Serial.println("press reset to go again");
   
 }  /* end of init_stopped_state */
 
@@ -150,6 +157,19 @@ state_type process_reset_state( void )
  =================================================================*/
 state_type process_armed_state( void )
 {
+  int rh_pin;
+  int lh_pin;
+
+  rh_pin = digitalRead(RH_PIN);
+  lh_pin = digitalRead(LH_PIN);
+
+  #if 0
+  Serial.print("pins: ");
+  Serial.print(rh_pin);
+  Serial.print(" ");
+  Serial.println(lh_pin);
+  #endif
+  
   if ((digitalRead(RH_PIN) == HIGH) && (digitalRead(LH_PIN) == HIGH))
   {
     return(STATE_TIMING);
