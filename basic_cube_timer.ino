@@ -1,8 +1,43 @@
 /* Basic Cube Timer */
 
-#define RH_PIN    7
-#define LH_PIN    8
-#define RESET_PIN 9
+
+
+#include <LiquidCrystal.h>
+/*================
+ * LCD CONNECTIONS:  (note...we're using 4 bit mode here...)
+ *   1 to GND
+ *   2 to 5V
+ *   3 to the contrast control...I did a hardcoded voltage divider.
+ *   4 to Arduino digital pin LCD_REG_SEL
+ *   5 to GND
+ *   6 to Arduino digital pin LCD_ENABLE
+ *   7 (no connection)
+ *   8 (no connection)
+ *   9 (no connection)
+ *   10 (no connection)
+ *   11 to Arduino  digital pin LCD_D4
+ *   12 to Arduino  digital pin LCD_D5
+ *   13 to Arduino  digital pin LCD_D6
+ *   14 to Arduino  digital pin LCD_D7
+ *   15 to 5V
+ *   16 to GND
+ *====================*/
+#define LCD_D7         4 
+#define LCD_D6         5
+#define LCD_D5         6
+#define LCD_D4         7
+#define LCD_ENABLE     8
+#define LCD_REG_SEL    9
+
+// Our LCD has 2 rows of 16 characters.
+#define LCD_CHARS 16
+#define LCD_ROWS 2
+
+LiquidCrystal lcd(LCD_REG_SEL, LCD_ENABLE, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+
+#define RH_PIN    10
+#define LH_PIN    11
+#define RESET_PIN 12
 
 uint32_t start_time;
 
@@ -56,12 +91,27 @@ proc_func_type proc_func[] =
  * display text
  * 
  * This is a wrapper function for text display.
- * For starters, I'm just going to use the serial port,
- * but eventually I'll put this on the LCD.
+ * Put text out to both serial and top line of the LCD display.
  =================================================================*/
 void display_text(char *text)
 {
   Serial.println(text);
+  lcd.setCursor(0,0);
+  lcd.print(text);
+}
+
+/*=================================================================
+ * display text - overload
+ * 
+ * This is a wrapper function for text display.
+ * Put text out to both serial and text at the specified row/column of the lcd
+ =================================================================*/
+
+void display_text(char *text, int row, int col)
+{
+  Serial.println(text);
+  lcd.setCursor(col,row);
+  lcd.print(text);
 }
 
 /*=================================================================
@@ -81,12 +131,19 @@ void display_elapsed_time( void )
 
   elapsed_time = current_time - start_time;
   elapsed_sec = elapsed_time/1000;
-  elapsed_ms = elapsed_time - elapsed_sec;
+  elapsed_ms = elapsed_time % 1000;
 
-  /* Serial print for now...eventually going to LCD. */
+  /* Serial print portion */
+  Serial.print("sec: ");
   Serial.print(elapsed_sec);
-  Serial.print(".");
+  Serial.print(" ms: ");
   Serial.println(elapsed_ms);
+
+  /* LCD version goes on second line */
+  lcd.setCursor(0,1);
+  lcd.print(elapsed_sec);
+  lcd.print(".");
+  lcd.print(elapsed_ms);
 }  /* end of display_elapsed_time */
 
 /*=================================================================
@@ -94,7 +151,9 @@ void display_elapsed_time( void )
  =================================================================*/
 void init_reset_state( void )
 {
-  display_text("Waiting...press both buttons to arm");
+  lcd.clear();
+  display_text("  Press both");
+  display_text("buttons to arm", 1, 0);
   
 }  /* end of init_reset_state */
 
@@ -103,7 +162,8 @@ void init_reset_state( void )
  =================================================================*/
 void init_armed_state( void )
 {
-  display_text("Ready...release to begin");
+  lcd.clear();
+  display_text("Ready...");
   
 }  /* end of init_armed_state */
 
@@ -125,9 +185,9 @@ void init_stopped_state( void )
 {
 
   // One last update...
-  Serial.println("Done!!!");
+  display_text("reset 2 go again");
   display_elapsed_time();
-  Serial.println("press reset to go again");
+  display_text("=your time",1,6);
   
 }  /* end of init_stopped_state */
 
@@ -139,7 +199,20 @@ void init_stopped_state( void )
  =================================================================*/
 state_type process_reset_state( void )
 {
-  if ((digitalRead(RH_PIN) == LOW) && (digitalRead(LH_PIN) == LOW))
+  int rh_pin;
+  int lh_pin; 
+
+  rh_pin = digitalRead(RH_PIN);
+  lh_pin = digitalRead(LH_PIN);
+  
+  //#if 0
+  Serial.print("pins: ");
+  Serial.print(rh_pin);
+  Serial.print(" ");
+  Serial.println(lh_pin);
+  //#endif
+  
+  if ((rh_pin == LOW) && (lh_pin == LOW))
   {
     return(STATE_ARMED);
   }
@@ -163,12 +236,12 @@ state_type process_armed_state( void )
   rh_pin = digitalRead(RH_PIN);
   lh_pin = digitalRead(LH_PIN);
 
-  #if 0
+  //#if 0
   Serial.print("pins: ");
   Serial.print(rh_pin);
   Serial.print(" ");
   Serial.println(lh_pin);
-  #endif
+  //#endif
   
   if ((digitalRead(RH_PIN) == HIGH) && (digitalRead(LH_PIN) == HIGH))
   {
@@ -231,6 +304,9 @@ void setup( void )
   pinMode(LH_PIN, INPUT_PULLUP);
   pinMode(RESET_PIN, INPUT_PULLUP);
 
+  lcd.begin(LCD_CHARS, LCD_ROWS);
+  lcd.clear();
+  
   init_reset_state();
   
 }
